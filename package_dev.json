@@ -1,0 +1,113 @@
+{
+  "name": "cloud-sf-extension-cap-sample",
+  "version": "1.0.0",
+  "description": "Successfactors Extension Application",
+  "repository": "https://github.com/SAP-samples/cloud-sf-extension-cap-sample.git",
+  "license": "Apache License 2.0",
+  "dependencies": {
+    "@sap/audit-logging": "^5.0.0",
+    "@sap/cds": "5.5.4",
+    "@sap/hana-client": "^2.8.16",
+    "@sap/xb-msg-amqp-v100": "^0.9.48",
+    "@sap/xsenv": "^3.1.0",
+    "@sap/xssec": "^3.2.0",
+    "express": "^4.17.1",
+    "passport": "^0.4.1"
+  },
+  "engines": {
+    "node": "^14"
+  },
+  "devDependencies": {
+    "sqlite3": "^5.0.0",
+    "chai": "^4.3.4",
+    "chai-http": "^4.3.0",
+    "mocha": "^9.0.0"
+  },
+  "scripts": {
+    "start": "cds run",
+    "build": "cds build/all --clean",
+    "test": "mocha test/chai-test.js --timeout 15000 --exit"
+  },
+  "cds": {
+    "hana": {
+      "deploy-format": "hdbtable"
+    },
+    "requires": {
+      "uaa": {
+        "kind": "xsuaa"
+      },
+      "messaging": {
+        "kind": "local-messaging",
+        "[production]": {
+          "kind": "enterprise-messaging-shared",
+          "publishPrefix": "$namespace/",
+          "subscribePrefix": "$namespace/"
+        }
+      },
+      "db": {
+        "kind": "sqlite",
+        "[production]": {
+            "kind": "hana",
+            "model": [
+                "db",
+                "srv"
+            ]
+        },
+        "credentials": {
+          "database": "sfdemo.db"
+        }
+      },
+      "PLTUserManagement": {
+        "kind": "odata-v2",
+        "model": "srv/external/PLTUserManagement",
+        "[production]": {
+            "credentials": {
+                "destination": "sfextension-service",
+                "path": "/odata/v2",
+                "requestTimeout": 18000000
+            }
+        },
+        "credentials": {
+            "url": "https://sandbox.api.sap.com/successfactors",
+            "path": "/odata/v2",
+            "requestTimeout": 18000000
+        }
+      },
+      "ECSkillsManagement": {
+        "kind": "odata-v2",
+        "model": "srv/external/ECSkillsManagement",
+        "credentials": {
+            "url": "https://sandbox.api.sap.com/successfactors",
+            "path": "/odata/v2",
+            "requestTimeout": 18000000
+        },
+        "[production]": {
+            "credentials": {
+                "destination": "sfextension-service",
+                "path": "/odata/v2",
+                "requestTimeout": 18000000
+            }
+        }
+      },
+      "FoundationPlatformPLT": {
+        "kind": "odata-v2",
+        "model": "srv/external/FoundationPlatformPLT",
+        "credentials": {
+            "url": "https://sandbox.api.sap.com/successfactors",
+            "path": "/odata/v2",
+            "requestTimeout": 18000000
+        },
+        "[production]": {
+            "credentials": {
+                "destination": "sfextension-service",
+                "path": "/odata/v2",
+                "requestTimeout": 18000000
+            }
+        }
+      }
+    },
+    "odata": {
+      "version": "v4"
+    }
+  }
+}

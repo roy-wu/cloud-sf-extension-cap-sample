@@ -6,10 +6,12 @@ module.exports = async srv => {
     skillsmanage = await cds.connect.to('ECSkillsManagement'),
     messaging = await cds.connect.to('messaging'),
     db = await cds.connect.to('db'),
+    headers = {"APIKey":"Uko642EAG0CsSl9e5KKFWBIaCmo0ETQ8"},
     { Mappings, Notifications, Project } = srv.entities,
     { Users: userInfo } = db.entities,
     { Userphoto: userPic } = db.entities,
     { User } = usermanage.entities;
+//    messaging.emit({event:'sfdemo', data:{ "name": "roy" }, headers:{"message":"User contract terminated", "employeeId":"100000", "managerId":"10001", "readStatus": true}})
 
   const STATUS = {
     Open: "O",
@@ -31,19 +33,27 @@ module.exports = async srv => {
       const userid = await cds.run(SELECT.one.from(Mappings).where({ ID: mappingid }).columns('employeeId')),
         empIduser = userid.employeeId,
         queryad = SELECT.from(userInfo).where({ employeeid: empIduser }),
-        employeedetails = await usermanage.tx(req).run(queryad);
+        //employeedetails = await usermanage.tx(req).run(queryad);
+        employeedetails = await usermanage.tx(req).send({ query: queryad, headers: headers });
       return employeedetails[0]
     } else  if (req.params.length === 1){
       const notificationid = req.params[0].ID,
         userid = await cds.run(SELECT.one.from(Notifications).where({ ID: notificationid }).columns('employeeId')),
         empIduser = userid.employeeId,
         queryad = SELECT.from(userInfo).where({ employeeid: empIduser }),
-        employeedetails = await usermanage.tx(req).run(queryad);
+        //employeedetails = await usermanage.tx(req).run(queryad);
+        employeedetails = await usermanage.tx(req).send({ query: queryad, headers: headers });
       return employeedetails[0]
     } else {
-      const result = await usermanage.run(SELECT.from(User, uinfo => { uinfo.directReports(dr => { dr.userId, dr.defaultFullName }) }).where({
-        userId: empId
-      }).limit(10)),
+    //   const result = await usermanage.run(SELECT.from(User, uinfo => { uinfo.directReports(dr => { dr.userId, dr.defaultFullName }) }).where({
+    //     userId: empId
+    //   }).limit(10)),
+        queryad = SELECT.from(User, uinfo => { uinfo.directReports(dr => { dr.userId, dr.defaultFullName }) }).where({
+            //userId: empId
+            userId: '106001'
+        }).limit(10);
+        const result = await usermanage.send({ query: queryad, headers: headers });
+
         drreporties = result[0]?.directReports;
       if (drreporties.length >= 1) {
         return drreporties.map(row => ({ employeeid: row.userId, employeename: row.defaultFullName }))
@@ -67,7 +77,8 @@ module.exports = async srv => {
        userid = await cds.run(SELECT.one.from(Mappings).where({ ID: mappingidpic }).columns('employeeId')),
         empId = userid.employeeId,
         queryad = SELECT.from(userPic).where({ employeeid: empId, phototype: 20 }),
-        userphoto = await photomanage.tx(req).run(queryad);
+        //userphoto = await photomanage.tx(req).run(queryad);
+        userphoto = await photomanage.tx(req).send({query: queryad, headers: headers});
       //*  This is primitive logic to stream in case of sqlite *//
       const userPhotonm = userphoto[0].photo
       let imagebuff = new Buffer.from(userPhotonm, 'base64');
@@ -83,7 +94,8 @@ module.exports = async srv => {
       userid = await cds.run(SELECT.one.from(Notifications).where({ ID: notificationpic }).columns('employeeId')),
         empId = userid.employeeId,
         queryad = SELECT.from(userPic).where({ employeeid: empId, phototype: 20 }),
-        userphoto = await photomanage.tx(req).run(queryad);
+        //userphoto = await photomanage.tx(req).run(queryad);
+        userphoto = await photomanage.tx(req).send({query: queryad, headers: headers});
       //*  This is primitive logic to stream in case of sqlite *//
       const userPhotonm = userphoto[0].photo
       let imagebuff = new Buffer.from(userPhotonm, 'base64');
@@ -97,14 +109,15 @@ module.exports = async srv => {
     } else {
       const empId = req.user.id,
         queryad = SELECT.from(userPic).where({ employeeid: empId, phototype: 20 });
-      return photomanage.tx(req).run(queryad)
+      //return photomanage.tx(req).run(queryad)
+      return photomanage.tx(req).send({query: queryad, headers: headers})
 
     }
   })
 
   //* Emnterprise Messaging Configuration *//
   /* For Use Productive use */
-  messaging.on('sfemessage', async msg => {
+  messaging.on('sfmsg', async msg => {
     const message = msg.headers.message,
       employeeId = msg.headers.employeeId,
       managerId = msg.headers.managerId,
@@ -243,8 +256,7 @@ module.exports = async srv => {
     const txuser = usermanage.tx(req),
       txphoto = photomanage.tx(req);
     await Promise.all(
-      mappings
-        .filter(mapping => mapping.employeeId)
+      mappings.filter(mapping => mapping.employeeId)
         .map(mapping => Promise.all([getEmployeeName(mapping, txuser), getPic(mapping, txphoto)]))
     )
     return mappings;
@@ -277,7 +289,8 @@ module.exports = async srv => {
     try {
       const empId = each.employeeId,
         query = SELECT.from(userInfo).where({ employeeid: empId }),
-        username = await tx.run(query)
+        //username = await tx.run(query)
+        username = await tx.send({query: query, headers: headers})
       username.forEach(name => { each.userinfo = name, each.userinfo.defaultFullName = name.employeename, each.userinfo_employeeid = name.employeeid })
 
     } catch (e) {
@@ -291,7 +304,8 @@ module.exports = async srv => {
       const skillArr = [],
         empId = each.employeeId,
         query = `/SkillProfile('${empId}')?$format=json&$expand=externalCodeNav,ratedSkills/skillNav&$select=ratedSkills/skillNav/name_en_US`,
-        data = await tx.run(query),
+        //data = await tx.run(query),
+        data = await tx.send({query: query, headers: headers}),
         skills = data.ratedSkills
       for (const skill of skills) {
         const skillName = skill.skillNav.name_en_US
@@ -310,7 +324,8 @@ module.exports = async srv => {
       const empId = each.employeeId,
         queryn = SELECT.from(userPic)
           .where({ employeeid: empId, phototype: 20 }),
-        username = await tx.run(queryn)
+        //username = await tx.run(queryn)
+        username = await tx.send({query: queryn, headers: headers})
       username.forEach(name => {
         each.userpic = name,
           each.userpic_employeeid = name.employeeid, each.userpic_phototype = name.phototype
